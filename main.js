@@ -1,3 +1,5 @@
+var timeToPoint;
+
 var map;
 var marker;
 var currentIndex;
@@ -5,8 +7,10 @@ var diff;
 var totalTime;
 var lastTime;
 var currentTime;
+var lastDiff;
 var dirLat;
 var dirLng;
+var allItems = new Array();
 
 function initialize() {
     var latlng = new google.maps.LatLng(51.50788400951119,-0.1368303833007758);
@@ -20,31 +24,50 @@ function initialize() {
 }
 
 function loadLocations() {
-	currentIndex = data.data.length-1;
-	var item = data.data[currentIndex];
-	var nextItem = data.data[currentIndex-1];
-	var firstItem = data.data[0];
+	var pos;
+	for(var i=0; i < data.data.length; ++i) {
+		var item = data.data[i];
+		pos = new Object();
+		pos.lat = item.place.location.latitude;
+		pos.lng = item.place.location.longitude;
+		pos.name = item.place.name;
+		pos.created = item.created_time;
+		allItems.push(pos);
+	}
+
+	currentIndex = allItems.length-1;
+	pos = allItems[currentIndex];
+	var pos2 = allItems[currentIndex-1];
+	console.log("CI " + currentIndex);
+	console.log("2 " + pos2);
+	var firstPos = allItems[0];
 	
-	var lat = item.place.location.latitude;
-	var lng = item.place.location.longitude;
-	var lat2 = nextItem.place.location.latitude;
-	var lng2 = nextItem.place.location.longitude;
 	
-	var position = new google.maps.LatLng(lat,lng);
-	var title = item.place.name;
-	var image = "img/plane.png"
-	marker = new google.maps.Marker({map:map,position:position,draggable:false,title:title,icon:image});
-	var t1 = new Date(item.created_time);
-	var t2 = new Date(firstItem.created_time);
-	
-	var dist = distance(lat,lng,lat2,lng2);
-	dirLat = (lat2 - lat)/10;
-	dirLng = (lng2 - lng)/10;
-	
+	var position = new google.maps.LatLng(pos.lat,pos.lng);
+	var image = "img/plane.png";
+	marker = new google.maps.Marker({map:map,position:position,draggable:false,title:pos.name,icon:image});
+	var t1 = new Date(pos.created);
+	var t2 = new Date(firstPos.created);
 	totalTime = t2.getTime()-t1.getTime();
 	console.log(totalTime);
-	console.log(dist);
+	
+	
+	setupMovement(pos,pos2);
+	
+	
 	setInterval(updateLocation,24);
+}
+
+function setupMovement(pos,pos2) {
+	timeToPoint = 2000;
+	console.log(pos);
+	var dist = distance(pos.lat,pos.lng,pos2.lat,pos2.lng);
+	
+	dirLat = (pos2.lat - pos.lat)/timeToPoint;
+	dirLng = (pos2.lng - pos.lng)/timeToPoint;
+	
+	
+	console.log(dist);
 }
 
 function updateLocation() {
@@ -54,20 +77,28 @@ function updateLocation() {
 	if(isNaN(delta)) {
 		return;
 	}
+	timeToPoint-=delta;
 	var position = marker.getPosition();
 	
 	var lat = position.lat();
 	var lng = position.lng();
 	
-	var latDiff = latNext - lat;
-	var lngDiff = lngNext - lng;
-	lat+=(dirLat*delta)/1000.0;
-	lng+=(dirLng*delta)/1000.0;
+	lat+=(dirLat*delta);
+	lng+=(dirLng*delta);
 	
-	console.log(delta);
 	
 	position = new google.maps.LatLng(lat,lng);
+	
 	marker.setPosition(position);
+	if(timeToPoint <= 0) {
+		if(currentIndex > 1) {
+			var pos = allItems[currentIndex];
+			var pos2 = allItems[currentIndex-1];
+			setupMovement(pos,pos2);
+			currentIndex--;
+		}
+		
+	}
 }
 
 function distance(lat1,lng1,lat2,lng2) {
