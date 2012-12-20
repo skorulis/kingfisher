@@ -23,10 +23,10 @@ function initialize() {
 	loadLocations();
 }
 
-function loadLocations() {
+function takeRelevantData(items) {
 	var pos;
-	for(var i=0; i < data.data.length; ++i) {
-		var item = data.data[i];
+	for(var i=0; i < items.length; ++i) {
+		var item = items[i];
 		pos = new Object();
 		pos.lat = item.place.location.latitude;
 		pos.lng = item.place.location.longitude;
@@ -34,6 +34,11 @@ function loadLocations() {
 		pos.created = item.created_time;
 		allItems.push(pos);
 	}
+}
+
+function loadLocations() {
+	var pos;
+	takeRelevantData(data.data);
 
 	currentIndex = allItems.length-1;
 	pos = allItems[currentIndex];
