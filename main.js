@@ -1,21 +1,21 @@
+//Time variables
 var timeToPoint;
+var totalTime;
+var lastTime;
+var currentTime;
+var lastDiff;
 
 var map;
 var marker;
 var currentIndex;
 var diff;
-var totalTime;
-var lastTime;
-var currentTime;
-var lastDiff;
-var dirLat;
-var dirLng;
+
 var allItems = new Array();
 
 function initialize() {
     var latlng = new google.maps.LatLng(51.50788400951119,-0.1368303833007758);
     var myOptions = {
-      zoom: 2,
+      zoom: 7,
       center: latlng,
       mapTypeId: google.maps.MapTypeId.ROADMAP
     };
@@ -30,6 +30,7 @@ function takeRelevantData(items) {
 		pos = new Object();
 		pos.lat = item.place.location.latitude;
 		pos.lng = item.place.location.longitude;
+		pos.location = new google.maps.LatLng(pos.lat,pos.lng);
 		pos.name = item.place.name;
 		pos.created = item.created_time;
 		allItems.push(pos);
@@ -58,21 +59,22 @@ function loadLocations() {
 	
 	
 	setupMovement(pos,pos2);
-	
-	
+	addAllMarkers();
 	setInterval(updateLocation,24);
 }
 
+function addAllMarkers() {
+	var image = "img/marker-blue.png";
+	for(var i = 0; i < allItems.length; ++i) {
+		var pos = allItems[i];
+		var position = new google.maps.LatLng(pos.lat,pos.lng);
+		var marker = new google.maps.Marker({map:map,position:position,draggable:false,title:pos.name,icon:image});
+	}
+}
+
 function setupMovement(pos,pos2) {
-	timeToPoint = 2000;
+	timeToPoint = 5000;
 	console.log(pos);
-	var dist = distance(pos.lat,pos.lng,pos2.lat,pos2.lng);
-	
-	dirLat = (pos2.lat - pos.lat)/timeToPoint;
-	dirLng = (pos2.lng - pos.lng)/timeToPoint;
-	
-	
-	console.log(dist);
 }
 
 function updateLocation() {
@@ -82,28 +84,48 @@ function updateLocation() {
 	if(isNaN(delta)) {
 		return;
 	}
+	var nextPos = allItems[currentIndex-1];
 	timeToPoint-=delta;
-	var position = marker.getPosition();
+	var position = marker.getPosition();	
+	
+	position = moveTowards(position,nextPos.location);
+	
+	marker.setPosition(position);
+	var dist = google.maps.geometry.spherical.computeDistanceBetween(position,nextPos.location);
+	if(dist < 100) {
+		if(currentIndex > 1) {
+			currentIndex--;	
+		}
+	}
+	/*if(timeToPoint <= 0) {
+		if(currentIndex > 1) {
+			var pos = allItems[currentIndex];
+			setupMovement(pos,nextPos);
+			currentIndex--;
+		}	
+	}*/
+}
+
+function moveTowards(position,nextPosition) {
+	var heading = google.maps.geometry.spherical.computeHeading(position,nextPosition);
+	var radHeading = toRad(heading);
+	
+	var dirX = Math.cos(radHeading);
+	var dirY = Math.sin(radHeading);
 	
 	var lat = position.lat();
 	var lng = position.lng();
+	lat+=dirX/1000;
+	lng+=dirY/1000;
 	
-	lat+=(dirLat*delta);
-	lng+=(dirLng*delta);
-	
-	
-	position = new google.maps.LatLng(lat,lng);
-	
-	marker.setPosition(position);
-	if(timeToPoint <= 0) {
-		if(currentIndex > 1) {
-			var pos = allItems[currentIndex];
-			var pos2 = allItems[currentIndex-1];
-			setupMovement(pos,pos2);
-			currentIndex--;
-		}
-		
-	}
+	//console.log("("+dirX+","+dirY+")");	
+	//console.log("("+lat+","+lng+")");	
+	//console.log(heading);
+	return new google.maps.LatLng(lat,lng);
+}
+
+function toRad(angle) {
+	return Math.PI*angle/180;
 }
 
 function distance(lat1,lng1,lat2,lng2) {
