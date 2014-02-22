@@ -15,37 +15,55 @@ var allItems = new Array();
 function initialize() {
     var latlng = new google.maps.LatLng(51.50788400951119,-0.1368303833007758);
     var myOptions = {
-      zoom: 7,
+      zoom: 3,
       center: latlng,
       mapTypeId: google.maps.MapTypeId.ROADMAP
     };
 	map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
-	loadLocations();
+	fetchFirst();
+	//loadLocations();
 }
 
-function takeRelevantData(items) {
+function takeRelevantData(items,addMarkers) {
 	var pos;
+	var pos2;
 	for(var i=0; i < items.length; ++i) {
 		var item = items[i];
+		if(item.place==undefined) {
+			continue;
+		}
 		pos = new Object();
 		pos.lat = item.place.location.latitude;
 		pos.lng = item.place.location.longitude;
 		pos.location = new google.maps.LatLng(pos.lat,pos.lng);
 		pos.name = item.place.name;
+		pos.id = item.id;
 		pos.created = item.created_time;
+		var start = Math.max(allItems.length-40,0);
+		for(var j=start; j < allItems.length; ++j) {
+			pos2 = allItems[j];
+			if(pos.id==pos2.id) {
+				console.log("found duplicate " + pos.id + " == " + pos2.id);
+				console.log("duplicate location " + j + " == " + allItems.length + " i " + i);
+				return false;
+			}
+		}
+		console.log("added " + pos.id);
 		allItems.push(pos);
+		if(addMarkers) {
+			addMarker(pos);
+		}
+		
 	}
+	return true;
 }
 
 function loadLocations() {
 	var pos;
-	takeRelevantData(data.data);
 
 	currentIndex = allItems.length-1;
 	pos = allItems[currentIndex];
 	var pos2 = allItems[currentIndex-1];
-	console.log("CI " + currentIndex);
-	console.log("2 " + pos2);
 	var firstPos = allItems[0];
 	
 	
@@ -64,12 +82,15 @@ function loadLocations() {
 }
 
 function addAllMarkers() {
-	var image = "img/marker-blue.png";
 	for(var i = 0; i < allItems.length; ++i) {
-		var pos = allItems[i];
-		var position = new google.maps.LatLng(pos.lat,pos.lng);
-		var marker = new google.maps.Marker({map:map,position:position,draggable:false,title:pos.name,icon:image});
+		addMarker(allItems[i]);
 	}
+}
+
+function addMarker(pos) {
+	var image = "img/marker-blue.png";
+	var position = new google.maps.LatLng(pos.lat,pos.lng);
+	var marker = new google.maps.Marker({map:map,position:position,draggable:false,title:pos.name,icon:image});
 }
 
 function setupMovement(pos,pos2) {
